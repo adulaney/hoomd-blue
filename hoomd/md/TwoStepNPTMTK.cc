@@ -331,7 +331,7 @@ void TwoStepNPTMTK::integrateStepOne(unsigned int timestep)
             box.wrap(h_pos.data[j], h_image.data[j]);
         }
 
-    // Integration of angular degrees of freedom using sympletic and
+    // Integration of angular degrees of freedom using symplectic and
     // time-reversal symmetric integration scheme of Miller et al., extended by thermostat
     if (m_aniso)
         {
@@ -473,7 +473,7 @@ void TwoStepNPTMTK::integrateStepTwo(unsigned int timestep)
     {
     unsigned int group_size = m_group->getNumMembers();
 
-    const GPUArray< Scalar4 >& net_force = m_pdata->getNetForce();
+    const GlobalArray< Scalar4 >& net_force = m_pdata->getNetForce();
 
    // profile this step
     if (m_prof)

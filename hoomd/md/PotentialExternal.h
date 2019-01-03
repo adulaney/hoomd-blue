@@ -6,6 +6,8 @@
 
 #include <memory>
 #include "hoomd/ForceCompute.h"
+#include "hoomd/GPUArray.h"
+#include "hoomd/GlobalArray.h"
 
 /*! \file PotentialExternal.h
     \brief Declares a class for computing an external force field
@@ -60,7 +62,7 @@ class PotentialExternal: public ForceCompute
             {
             // skip the reallocation if the number of types does not change
             // this keeps old parameters when restoring a snapshot
-            // it will result in invalid coeficients if the snapshot has a different type id -> name mapping
+            // it will result in invalid coefficients if the snapshot has a different type id -> name mapping
             if (m_pdata->getNTypes() == m_params.getNumElements())
                 return;
 
@@ -221,7 +223,7 @@ void PotentialExternal<evaluator>::setParams(unsigned int type, param_type param
     {
     if (type >= m_pdata->getNTypes())
         {
-        this->m_exec_conf->msg->error() << "external.periodic: Trying to set external potential params for a non existant type! "
+        this->m_exec_conf->msg->error() << "external.periodic: Trying to set external potential params for a non existent type! "
                                         << type << std::endl;
         throw std::runtime_error("Error setting parameters in PotentialExternal");
         }

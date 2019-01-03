@@ -33,7 +33,7 @@ HOOMD_UP_MAIN()
 using namespace std;
 using namespace std::placeholders;
 
-//! Typedef for function that creates the Communnicator on the CPU or GPU
+//! Typedef for function that creates the Communicator on the CPU or GPU
 typedef std::function<std::shared_ptr<Communicator> (std::shared_ptr<SystemDefinition> sysdef,
                                                   std::shared_ptr<DomainDecomposition> decomposition)> communicator_creator;
 
@@ -532,7 +532,7 @@ void test_communicator_migrate(communicator_creator comm_creator, std::shared_pt
 
     // particle 0 crosses the global boundary in +x direction
     pdata->setPosition(0, TO_TRICLINIC(make_scalar3(1.1,-0.5,-0.5)),false);
-    //  particle 1 crosses the global bounadry in the -x direction
+    //  particle 1 crosses the global boundary in the -x direction
     pdata->setPosition(1, TO_TRICLINIC(make_scalar3(-1.1, 0.5, -0.5)),false);
     // particle 2 crosses the global boundary in the + y direction
     pdata->setPosition(2, TO_TRICLINIC(make_scalar3(0.2, 1.3, -0.5)),false);
@@ -754,14 +754,15 @@ void test_communicator_balanced_migrate(communicator_creator comm_creator, std::
     pdata->setPosition(7, TO_TRICLINIC(make_scalar3(-0.51,-0.751,0.251)),false);
 
     // validate that placing the particle would send it to the ranks that we expect
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(0)), 1);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(1)), 2);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(2)), 3);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(3)), 4);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(4)), 5);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(5)), 6);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(6)), 7);
-    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(7)), 0);
+    ArrayHandle<unsigned int> h_cart_ranks(decomposition->getCartRanks(), access_location::host, access_mode::read);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(0), h_cart_ranks.data), 1);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(1), h_cart_ranks.data), 2);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(2), h_cart_ranks.data), 3);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(3), h_cart_ranks.data), 4);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(4), h_cart_ranks.data), 5);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(5), h_cart_ranks.data), 6);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(6), h_cart_ranks.data), 7);
+    UP_ASSERT_EQUAL(decomposition->placeParticle(pdata->getGlobalBox(), pdata->getPosition(7), h_cart_ranks.data), 0);
 
     // migrate atoms
     comm->migrateParticles();
@@ -831,7 +832,7 @@ void test_communicator_balanced_migrate(communicator_creator comm_creator, std::
 
     // particle 0 crosses the global boundary in +x direction
     pdata->setPosition(0, TO_TRICLINIC(make_scalar3(1.1,-0.751,0.251)),false);
-    //  particle 1 crosses the global bounadry in the -x direction
+    //  particle 1 crosses the global boundary in the -x direction
     pdata->setPosition(1, TO_TRICLINIC(make_scalar3(-1.1, -0.251, 0.251)),false);
     // particle 2 crosses the global boundary in the + y direction
     pdata->setPosition(2, TO_TRICLINIC(make_scalar3(0.51, 1.3, 0.251)),false);

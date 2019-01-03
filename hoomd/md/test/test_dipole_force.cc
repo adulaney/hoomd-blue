@@ -41,7 +41,7 @@ HOOMD_UP_MAIN();
 typedef std::function<std::shared_ptr<AnisoPotentialPairDipole> (std::shared_ptr<SystemDefinition> sysdef,
                                                      std::shared_ptr<NeighborList> nlist)> dipoleforce_creator;
 
-//! Test the ability of the Gay Berne force compute to actually calucate forces
+//! Test the ability of the Gay Berne force compute to actually calculate forces
 void dipole_force_particle_test(dipoleforce_creator dipole_creator, std::shared_ptr<ExecutionConfiguration> exec_conf)
     {
     std::shared_ptr<SystemDefinition> sysdef_2(new SystemDefinition(2, BoxDim(1000.0), 1, 0, 0, 0, 0, exec_conf));
@@ -75,9 +75,9 @@ void dipole_force_particle_test(dipoleforce_creator dipole_creator, std::shared_
     fc_2->compute(0);
 
     {
-    GPUArray<Scalar4>& force_array_1 =  fc_2->getForceArray();
-    GPUArray<Scalar>& virial_array_1 =  fc_2->getVirialArray();
-    GPUArray<Scalar4>& torque_array_1 =  fc_2->getTorqueArray();
+    GlobalArray<Scalar4>& force_array_1 =  fc_2->getForceArray();
+    GlobalArray<Scalar>& virial_array_1 =  fc_2->getVirialArray();
+    GlobalArray<Scalar4>& torque_array_1 =  fc_2->getTorqueArray();
     ArrayHandle<Scalar4> h_force_1(force_array_1,access_location::host,access_mode::read);
     ArrayHandle<Scalar> h_virial_1(virial_array_1,access_location::host,access_mode::read);
     ArrayHandle<Scalar4> h_torque_1(torque_array_1,access_location::host,access_mode::read);

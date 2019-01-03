@@ -17,6 +17,7 @@
 #include <thrust/gather.h>
 #include <thrust/transform.h>
 #include <thrust/copy.h>
+#include <thrust/binary_search.h>
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/zip_iterator.h>
 
@@ -228,7 +229,8 @@ void gpu_sort_migrating_particles(const unsigned int nsend,
                    const unsigned int mask,
                    mgpu::ContextPtr mgpu_context,
                    unsigned int *d_tmp,
-                   pdata_element *d_in_copy)
+                   pdata_element *d_in_copy,
+                   const CachedAllocator& alloc)
     {
     // Wrap input & output
     thrust::device_ptr<pdata_element> in_ptr(d_in);
@@ -255,10 +257,22 @@ void gpu_sort_migrating_particles(const unsigned int nsend,
     // reorder send buf
     thrust::gather(tmp_ptr, tmp_ptr + nsend, in_copy_ptr, in_ptr);
 
-    mgpu::SortedSearch<mgpu::MgpuBoundsLower>(d_neighbors, nneigh,
-        thrust::raw_pointer_cast(keys_ptr), nsend, d_begin, *mgpu_context);
-    mgpu::SortedSearch<mgpu::MgpuBoundsUpper>(d_neighbors, nneigh,
-        thrust::raw_pointer_cast(keys_ptr), nsend, d_end, *mgpu_context);
+    thrust::device_ptr<unsigned int> begin_ptr(d_begin);
+    thrust::device_ptr<unsigned int> end_ptr(d_end);
+
+    thrust::lower_bound(thrust::cuda::par(alloc),
+        keys_ptr,
+        keys_ptr + nsend,
+        neighbors_ptr,
+        neighbors_ptr + nneigh,
+        begin_ptr);
+
+    thrust::upper_bound(thrust::cuda::par(alloc),
+        keys_ptr,
+        keys_ptr + nsend,
+        neighbors_ptr,
+        neighbors_ptr + nneigh,
+        end_ptr);
     }
 
 //! Wrap a particle in a pdata_element
@@ -384,7 +398,7 @@ __global__ void gpu_make_ghost_exchange_plan_kernel(
     if (f.z < ghost_fraction.z)
         plan |= send_down;
 
-    // filter out non-communiating directions
+    // filter out non-communicating directions
     plan &= mask;
 
     d_plan[idx] = plan;
@@ -711,7 +725,8 @@ void gpu_exchange_ghosts_make_indices(
     unsigned int n_unique_neigh,
     unsigned int n_out,
     unsigned int mask,
-    mgpu::ContextPtr mgpu_context)
+    mgpu::ContextPtr mgpu_context,
+    const CachedAllocator& alloc)
     {
     /*
      * expand each tag by the number of neighbors to send the corresponding ptl to
@@ -731,10 +746,24 @@ void gpu_exchange_ghosts_make_indices(
         // sort tags by neighbors
         mgpu::MergesortPairs_uint2(d_ghost_neigh, d_ghost_idx_adj, n_out, *mgpu_context);
 
-        mgpu::SortedSearch<mgpu::MgpuBoundsLower>(d_unique_neighbors, n_unique_neigh,
-            d_ghost_neigh, n_out, d_ghost_begin, *mgpu_context);
-        mgpu::SortedSearch<mgpu::MgpuBoundsUpper>(d_unique_neighbors, n_unique_neigh,
-            d_ghost_neigh, n_out, d_ghost_end, *mgpu_context);
+        thrust::device_ptr<const unsigned int> unique_neighbors(d_unique_neighbors);
+        thrust::device_ptr<unsigned int> ghost_neigh(d_ghost_neigh);
+        thrust::device_ptr<unsigned int> ghost_begin(d_ghost_begin);
+        thrust::device_ptr<unsigned int> ghost_end(d_ghost_end);
+
+        thrust::lower_bound(thrust::cuda::par(alloc),
+            ghost_neigh,
+            ghost_neigh + n_out,
+            unique_neighbors,
+            unique_neighbors + n_unique_neigh,
+            ghost_begin);
+
+        thrust::upper_bound(thrust::cuda::par(alloc),
+            ghost_neigh,
+            ghost_neigh + n_out,
+            unique_neighbors,
+            unique_neighbors + n_unique_neigh,
+            ghost_end);
         }
     else
         {
@@ -1325,11 +1354,11 @@ __global__ void gpu_mark_groups_kernel(
     \param d_members Array of group member tags
     \param d_group_tag Array of group tags
     \param d_group_rtag Array of group rtags
-    \param d_group_ranks Auxillary array of group member ranks
+    \param d_group_ranks Auxiliary array of group member ranks
     \param d_rtag Particle data reverse-lookup table for tags
     \param di Domain decomposition indexer
     \param my_pos Integer triple of domain coordinates
-    \param incomplete If true, initially update auxillary rank information
+    \param incomplete If true, initially update auxiliary rank information
  */
 template<unsigned int group_size, typename group_t, typename ranks_t>
 void gpu_mark_groups(

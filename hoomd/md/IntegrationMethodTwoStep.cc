@@ -102,11 +102,11 @@ bool IntegrationMethodTwoStep::restartInfoTestValid(const IntegratorVariables& v
 /*! \param query_group Group over which to count (translational) degrees of freedom.
     A majority of the integration methods add D degrees of freedom per particle in \a query_group that is also in the
     group assigned to the method. Hence, the base class IntegrationMethodTwoStep will implement that counting.
-    Derived classes can ovveride if needed.
+    Derived classes can override if needed.
 */
 unsigned int IntegrationMethodTwoStep::getNDOF(std::shared_ptr<ParticleGroup> query_group)
     {
-    // get the size of the intersecion between query_group and m_group
+    // get the size of the intersection between query_group and m_group
     unsigned int intersect_size = ParticleGroup::groupIntersection(query_group, m_group)->getNumMembersGlobal();
 
     return m_sysdef->getNDimensions() * intersect_size;
@@ -114,7 +114,7 @@ unsigned int IntegrationMethodTwoStep::getNDOF(std::shared_ptr<ParticleGroup> qu
 
 unsigned int IntegrationMethodTwoStep::getRotationalNDOF(std::shared_ptr<ParticleGroup> query_group)
     {
-    // get the size of the intersecion between query_group and m_group
+    // get the size of the intersection between query_group and m_group
     std::shared_ptr<ParticleGroup> intersect = ParticleGroup::groupIntersection(query_group, m_group);
 
     unsigned int local_group_size = intersect->getNumMembers();
@@ -166,24 +166,23 @@ unsigned int IntegrationMethodTwoStep::getRotationalNDOF(std::shared_ptr<Particl
 */
 void IntegrationMethodTwoStep::validateGroup()
     {
-    for (unsigned int gidx = 0; gidx < m_group->getNumMembersGlobal(); gidx++)
+    ArrayHandle<unsigned int> h_body(m_pdata->getBodies(), access_location::host, access_mode::read);
+    ArrayHandle<unsigned int> h_rtag(m_pdata->getRTags(), access_location::host, access_mode::read);
+    ArrayHandle<unsigned int> h_tag(m_pdata->getTags(), access_location::host, access_mode::read);
+    ArrayHandle<unsigned int> h_group_index(m_group->getIndexArray(), access_location::host, access_mode::read);
+
+    for (unsigned int gidx = 0; gidx < m_group->getNumMembers(); gidx++)
         {
-        unsigned int tag = m_group->getMemberTag(gidx);
-        if (m_pdata->isParticleLocal(tag))
+        unsigned int i = h_group_index.data[gidx];
+        unsigned int tag = h_tag.data[i];
+        unsigned int body = h_body.data[i];
+
+        if (body != NO_BODY && body != tag)
             {
-            ArrayHandle<unsigned int> h_body(m_pdata->getBodies(), access_location::host, access_mode::read);
-            ArrayHandle<unsigned int> h_rtag(m_pdata->getRTags(), access_location::host, access_mode::read);
-            ArrayHandle<unsigned int> h_tag(m_pdata->getTags(), access_location::host, access_mode::read);
-
-            unsigned int body = h_body.data[h_rtag.data[tag]];
-
-            if (body != NO_BODY && body != tag)
-                {
-                m_exec_conf->msg->error() << "Particle " << tag << " belongs to a rigid body, but is not its center particle. "
-                    << std::endl << "This integration method does not operate on constituent particles."
-                    << std::endl << std::endl;
-                throw std::runtime_error("Error initializing integration method");
-                }
+            m_exec_conf->msg->error() << "Particle " << tag << " belongs to a rigid body, but is not its center particle. "
+                << std::endl << "This integration method does not operate on constituent particles."
+                << std::endl << std::endl;
+            throw std::runtime_error("Error initializing integration method");
             }
         }
 
